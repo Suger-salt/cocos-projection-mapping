@@ -10,3 +10,27 @@ body {
   padding: 0;
   pointer-events: "none";
 }
+
+
+/* スクロールバー全体 */
+::-webkit-scrollbar {
+  width: 12px; /* 幅 */
+  height: 12px; /* 高さ */
+}
+
+/* スクロールバーのトラック */
+::-webkit-scrollbar-track {
+  background: #f1f1f1; /* トラックの背景色 */
+  border-radius: 10px; /* 角を丸く */
+}
+
+/* スクロールバーのハンドル */
+::-webkit-scrollbar-thumb {
+  background: #4b6f69; /* ハンドルの色 */
+  border-radius: 10px; /* 角を丸く */
+}
+
+/* スクロールバーのハンドル（ホバー時） */
+::-webkit-scrollbar-thumb:hover {
+  background: #3a9288; /* ホバー時の色 */
+}

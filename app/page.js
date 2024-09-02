@@ -1,6 +1,19 @@
 "use client"; // クライアントコンポーネントとして指定
 
 import { useState, useEffect, useRef } from "react";
+import './page.css'
+
+// const fontLink = `
+// <style>
+// @import url('https://fonts.googleapis.com/css2?family=Darumadrop+One&display=swap');
+// .darumadrop-one-regular {
+//   font-family: "Darumadrop One", sans-serif;
+//   font-weight: 400;
+//   font-style: normal;
+// }
+// </style>
+// `;
+
 
 export default function Home() {
   const [images, setImages] = useState([]);
@@ -34,24 +47,29 @@ export default function Home() {
     const imageUrls = await Promise.all(
       imageFiles.map(async (file, index) => {
         setProgress(((index + 1) / imageFiles.length) * 50);
-        return URL.createObjectURL(file);
+        return {
+          url: URL.createObjectURL(file),
+          name: file.name,
+        };
       })
     );
 
-    const validImageUrls = imageUrls.filter((url) => url !== null);
+    const validImageUrls = imageUrls.filter((image) => image.url !== null);
     const processedImages = await Promise.all(
-      validImageUrls.map((url, index) =>
-        makeImageTransparent(url).then((processedUrl) => {
+      validImageUrls.map((image, index) =>
+        makeImageTransparent(image.url).then((processedUrl) => {
           setProgress(50 + ((index + 1) / validImageUrls.length) * 50);
-          return processedUrl;
+          return { url: processedUrl, name: image.name };
         })
       )
     );
 
+    // 初期位置をランダム生成
     const initialPositions = processedImages.map(() => ({
       x: Math.random() * widthRef.current,
       y: Math.random() * heightRef.current,
-      speed: 0.5 + Math.random() * 1,
+      speedX: (Math.random() - 0.5) * 2, // X方向のスピードを大きく調整
+      speedY: (Math.random() - 0.5) * 2, // Y方向のスピードを大きく調整
     }));
 
     setImages(processedImages);
@@ -59,6 +77,7 @@ export default function Home() {
     setLoading(false);
   };
 
+  //背景透過してるけど、いらなくね？
   const makeImageTransparent = (url) => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -88,6 +107,7 @@ export default function Home() {
   };
 
   useEffect(() => {
+    //ランダムな画像を表示し、その画像のx,yをランダムに変更
     if (images.length > 0) {
       const initialDisplay = images.slice(0, numDisplay);
       setDisplayedImages(initialDisplay);
@@ -102,16 +122,6 @@ export default function Home() {
           return updatedImages;
         });
 
-        setPositions((prevPositions) => {
-          const newPositions = [...prevPositions];
-          newPositions[currentIndexRef.current] = {
-            x: Math.random() * widthRef.current,
-            y: Math.random() * heightRef.current,
-            speed: 0.5 + Math.random() * 1,
-          };
-          return newPositions;
-        });
-
         currentIndexRef.current = (currentIndexRef.current + 1) % numDisplay;
       }, 2000);
 
@@ -121,27 +131,27 @@ export default function Home() {
 
   useEffect(() => {
     let animationFrameId;
-
+    //アニメーションの実行
     const animate = () => {
       setPositions((prevPositions) =>
         prevPositions.map((pos) => {
-          const newX = pos.x + (Math.random() - 0.5) * pos.speed * 5;
-          const newY = pos.y + (Math.random() - 0.5) * pos.speed * 5;
+          let newX = pos.x + pos.speedX;
+          let newY = pos.y + pos.speedY;
 
-          let adjustedX = newX;
-          let adjustedY = newY;
-
+          // 画面の端に到達した場合は方向を反転
           if (newX < 0 || newX > widthRef.current - 200) {
-            adjustedX = newX < 0 ? 0 : widthRef.current - 200;
+            pos.speedX *= -1;
+            newX = pos.x + pos.speedX;
           }
           if (newY < 0 || newY > heightRef.current - 200) {
-            adjustedY = newY < 0 ? 0 : heightRef.current - 200;
+            pos.speedY *= -1;
+            newY = pos.y + pos.speedY;
           }
 
           return {
-            x: adjustedX,
-            y: adjustedY,
-            speed: pos.speed,
+            ...pos,
+            x: newX,
+            y: newY,
           };
         })
       );
@@ -153,6 +163,10 @@ export default function Home() {
 
     return () => cancelAnimationFrame(animationFrameId);
   }, [displayedImages]);
+
+  const removeExtension = (filename) => {
+    return filename.split('.').slice(0, -1).join('.');
+  };
 
   return (
     <div>
@@ -173,8 +187,8 @@ export default function Home() {
           {progress}%
         </progress>
       )}
-      <div>
-        {/* <label>
+      <div >
+        <label>
           表示数:
           <input
             type="number"
@@ -183,34 +197,35 @@ export default function Home() {
             min="1"
             max="100"
           />
-        </label> */}
+        </label>
+        
       </div>
+      
       <div
         style={{
           position: "relative",
           width: "100vw",
           height: "100vh",
           overflow: "hidden",
+         
         }}
       >
-        {displayedImages.map((src, index) => (
-          <img
-            key={index}
-            src={src}
-            alt={`image-${index}`}
-            style={{
-              position: "absolute",
-              width: "200px",
-              height: "200px",
-              objectFit: "cover",
-              left: `${positions[index]?.x}px`,
-              top: `${positions[index]?.y}px`,
-              transition:
-                "left 2s linear, top 2s linear, opacity 1s ease-in-out",
-              opacity: 1,
-              pointerEvents: "none",
-            }}
-          />
+        {displayedImages.map((image, index) => (
+          <div key={index} style={{ position: "absolute", left: `${positions[index]?.x}px`, top: `${positions[index]?.y}px` }}>
+            <img
+              src={image.url}
+              alt={`image-${index}`}
+              style={{
+                width: "200px",
+                height: "200px",
+                objectFit: "cover",
+                transition: "left 2s linear, top 2s linear, opacity 1s ease-in-out",
+                opacity: 1,
+                pointerEvents: "none",
+              }}
+            />
+            <div className="image-name">{removeExtension(image.name)}</div>
+          </div>
         ))}
       </div>
     </div>
